@@ -1,22 +1,18 @@
 #!/bin/bash
 
+# Ensure the /usr/share/dict/words file exists
+if [[ ! -f /usr/share/dict/words ]]; then
+  echo "Wordlist file /usr/share/dict/words not found!"
+  exit 1
+fi
+
 # Number of random words to generate
 NUM_WORDS=999
 TARGET_WORD="helloworld"
 WORDLIST="wordlist.txt"
-WORD_LENGTH=8  # Length of each random word
-
-# Function to generate a random word of a given length
-generate_random_word() {
-  local length=$1
-  tr -dc 'a-zA-Z' < /dev/urandom | fold -w $length | head -n 1
-}
 
 # Generate random words and store them in an array
-WORDS=()
-for ((i = 0; i < NUM_WORDS; i++)); do
-  WORDS+=("$(generate_random_word $WORD_LENGTH)")
-done
+mapfile -t WORDS < <(shuf -n $NUM_WORDS /usr/share/dict/words)
 
 # Add the target word to the array
 WORDS+=("$TARGET_WORD")
