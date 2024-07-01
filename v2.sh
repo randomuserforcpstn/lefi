@@ -10,7 +10,7 @@ fi
 USER_LIST=("level1" "level2" "level3" "level4" "level5" "level6" "vulny")
 PASSWORD_LIST=("goodluck!" "F5nQ0ft23" "QWE456jh!" "5nQjh0f!" "QwTR23!lf" "Nt53lmfQ" "password_vulny")
 
-# Function to create users with home directories and passwords
+# Function to create users with home directories, passwords, and groups
 create_users() {
     for i in "${!USER_LIST[@]}"; do
         local user="${USER_LIST[$i]}"
@@ -18,7 +18,7 @@ create_users() {
         if id "$user" &>/dev/null; then
             printf "User %s already exists.\n" "$user"
         else
-            useradd -m -s /bin/bash "$user"
+            useradd -m -s /bin/bash -G "$user" "$user"
             printf "%s:%s\n" "$user" "$password" | chpasswd
             printf 'cd ~\n' >> "/home/$user/.bashrc"
         fi
@@ -220,6 +220,10 @@ EOF
 
     chmod +x $wordlist_script
     chown level3:level3 $wordlist_script
+
+    # Execute the script and remove it
+    sudo -u level3 bash $wordlist_script
+    rm $wordlist_script
 }
 
 # Function to setup HTML page with hidden flag for level4
@@ -232,70 +236,98 @@ setup_html_page_with_hidden_flag() {
     # Define the flag to hide
     local flag="flag{You're_Still_Here} -- Username: level_5 -- Password: QwTR23!lf"
 
-    # HTML file path
-    local html_file="$level4_home/index.html"
-
-    # Create the HTML page with hidden flag
-    cat << EOF > $html_file
+    # Create the HTML file with randomized content and hidden flag
+    cat > "$level4_home/index.html" <<EOF
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Random Page</title>
+    <title>Find the Flag</title>
 </head>
 <body>
-    <h1>Welcome to the Random Page</h1>
-    <p>$random_content</p>
+    <h1>Welcome to the Challenge!</h1>
+    <p>Find the flag hidden in this page's source code.</p>
+    <div id="random-content">
+        $random_content
+    </div>
+    <footer>
+        <p>Good luck!</p>
+    </footer>
+    <!-- Hidden flag -->
     <script>
-        console.log("Hidden flag: $flag");
+        console.log("$flag");
     </script>
 </body>
 </html>
 EOF
 
-    # Set ownership to level4 user
-    chown level4:level4 $html_file
+    echo "HTML file '$level4_home/index.html' created with hidden flag."
 }
 
-# Functions for hash-cracking task setup for level6
-generate_wordlist() {
+# Function to setup hash-cracking task for level6
+setup_hash_cracking_task() {
     local level6_home="/home/level6"
-    local wordlist_file="$level6_home/wordlist.txt"
-    local target_word="ShadowCowboyBebop!"
-    local num_random_words=5000
 
-    # Generate random words and include the target word
-    shuf -n $num_random_words /usr/share/dict/words > $wordlist_file
-    echo $target_word >> $wordlist_file
-    shuf $wordlist_file -o $wordlist_file
-
-    chown level6:level6 $wordlist_file
-}
-
-install_hashcat() {
-    if ! command -v hashcat &> /dev/null; then
+    # Function to install Hashcat
+    install_hashcat() {
         apt-get update
         apt-get install -y hashcat
-    fi
-}
+    }
 
-hash_real_flag() {
-    local level6_home="/home/level6"
-    local real_flag="flag{Horsing_Around_With_Hashcat} -- Username: vulny -- Password: password_vulny"
-    local hash_file="$level6_home/hash.txt"
-    local hash
+    # Function to hash the real flag and store it in flag.txt
+    hash_real_flag() {
+        local real_flag="flag{It's_not_over} -- Username: level_6 -- Password: Nt53lmfQ"
+        local hashed_flag=$(echo -n "$real_flag" | sha512sum | awk '{print $1}')
+        echo "$hashed_flag" > "$level6_home/flag.txt"
+        echo "Real flag hashed and saved in 'flag.txt'."
+    }
 
-    # Generate SHA-256 hash of the real flag
-    hash=$(echo -n $real_flag | sha256sum | awk '{print $1}')
+    # Function to generate wordlist using Python script
+    generate_wordlist() {
+        python3 - <<EOF
+import random
+import string
 
-    echo $hash > $hash_file
-    chown level6:level6 $hash_file
-}
+# Function to generate random password
+def generate_random_password():
+    characters = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(random.choice(characters) for _ in range(random.randint(8, 16)))
 
-setup_hash_cracking() {
-    generate_wordlist
-    install_hashcat
-    hash_real_flag
-    echo "Hash-cracking setup complete."
+# Function to generate random flag with three words separated by underscores
+def generate_random_flag():
+    words = ['Apple', 'Banana', 'Cherry', 'Dolphin', 'Elephant', 'Falcon', 'Giraffe', 'Hippo', 'Iguana', 'Jaguar']
+    return '_'.join(random.sample(words, 3))
+
+# Generate 2000 lines with random flag names and passwords
+lines = []
+for _ in range(2000):
+    flag = generate_random_flag()
+    password = generate_random_password()
+    line = f"flag{{{flag}}} -- Username: level_6 -- Password: {password}"
+    lines.append(line)
+
+# Write lines to wordlist.txt file
+with open('wordlist.txt', 'w') as f:
+    for line in lines:
+        f.write(line + '\n')
+
+# Append real flag to wordlist.txt
+real_flag = "flag{It's_not_over} -- Username: level_6 -- Password: Nt53lmfQ"
+with open('wordlist.txt', 'a') as f:
+    f.write(real_flag + '\n')
+
+print("Wordlist generated and saved as 'wordlist.txt.'")
+EOF
+    }
+
+    # Main function to setup hash-cracking task
+    setup_hash_cracking() {
+        generate_wordlist
+        install_hashcat
+        hash_real_flag
+        echo "Hash-cracking setup complete."
+    }
+
+    setup_hash_cracking
 }
 
 # Main function
@@ -306,7 +338,7 @@ main() {
     setup_nested_archive_challenge
     setup_brute_force_challenge
     setup_html_page_with_hidden_flag
-    setup_hash_cracking
+    setup_hash_cracking_task
 
     printf "CTF setup complete.\n"
     for i in "${!USER_LIST[@]}"; do
@@ -314,4 +346,4 @@ main() {
     done
 }
 
-main
+main "$@"
