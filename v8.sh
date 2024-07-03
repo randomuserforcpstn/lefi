@@ -267,36 +267,25 @@ setup_hash_cracking_task() {
     setup_hash_cracking
 }
 
-# Function to encode flag in base64 and create flag.txt
-encode_flag() {
+# Function to encode flag and convert to bytecode
+encode_flag_to_bytecode() {
     local flag="flag{Simple_Bytecode_Challenge} -- Username: level_7 -- Password: GTF0&inS!"
-    echo "$flag" | base64 > flag.txt
-}
+    local bytecode_file="/home/level6/.flag.bytecode"
 
-# Function to convert text file to bytecode
-text_to_bytecode() {
-    local text_file="flag.txt"
-    local bytecode_file="/home/level6/flag.bytecode"
-
-    # Convert text file to bytecode
-    od -A n -t x1 -v "$text_file" | tr -d ' \n' > "$bytecode_file"
+    # Encode flag to base64 and convert to bytecode
+    echo -n "$flag" | base64 | xxd -p > "$bytecode_file"
 
     echo "Bytecode conversion complete. Bytecode stored in '$bytecode_file'."
 }
 
 # Main function to setup bytecode analysis task
 setup_bytecode_analysis() {
-    encode_flag
-    text_to_bytecode
+    encode_flag_to_bytecode
 }
 
 # Function to setup Level 7 with sudo permissions
 setup_level7_sudo_privilege() {
     local level7_home="/home/vulny"
-
-    # Add 'vulny' user to sudoers file with NOPASSWD for /bin/bash
-    # echo "vulny ALL=(ALL) NOPASSWD: /bin/nano" > /etc/sudoers.d/vulny
-    # echo "level7 ALL=(ALL) NOPASSWD: /bin/nano" > /etc/sudoers.d/vulny
     
 # Add the sudoers rule for vulny to run nano without a password
     echo "vulny ALL=(ALL) NOPASSWD: /bin/nano" > /etc/sudoers.d/vulny
@@ -309,11 +298,16 @@ setup_level7_sudo_privilege() {
     chown vulny:vulny "$level7_home/flag.txt"
     echo "root:Y0u_4re_r00t!" | chpasswd
 }
-setup_level7_sudo_privilege
 
+root_flag_creation(){
+    # Create the flag file with the desired content
+    echo "flag{We_Hope_You_Enjoyed}" > /root/.megasecret
 
-# Run the setup function
-setup_bytecode_analysis
+    # Ensure the file is only accessible by the root user
+    chmod 600 /root/.megasecret
+    echo "Flag file created at /root/.megasecret"
+}
+
 
 # Main script execution
 create_users
@@ -323,5 +317,8 @@ setup_nested_archive_challenge
 setup_brute_force_challenge
 setup_html_page_with_hidden_flag
 setup_hash_cracking_task
+setup_bytecode_analysis
+setup_level7_sudo_privilege
+root_flag_creation
 
 printf "Setup complete.\n"
